@@ -1,0 +1,63 @@
+
+
+1)即使是abstract base class也可能需要手动写constructor,de...,关键是看它有没有non satic data member
+
+2)纯虚函数的存在：
+　　　可以定义和调用pure virtual func ,但是只能被静态的调用，而不能通过虚拟机制
+　　　　　注意，因为在每一个derived class　destructor会被扩展，以静态方式调用每一个virtual base class 和上一层的desturctor,
+      所以只要缺少任何一个 base destructor定义则链接失败　，所以需要定义pure virtual destructor
+      一个比较好的替代方式就是不要把vitual dect~定义为pure
+      考虑到成本，不要把所有的函数都定以为virtual
+      
+3)虚拟规格的存在：
+　　　　在virtual func要不要为const ,主要看要不要对date member做修改
+所以不要随便定义为pure,virtual const
+
+
+一、无继承情况下对象构造几种方式：
+Point global;　//周期：程序的生命周期，exit前
+ 
+Point foobar(){
+   Point local;　//此函数的周期
+   Point *heap=new Point;//delete 前
+   *heap=local;
+   delete heap;
+   return local;
+   }
+   
+1)考虑这几个对象的声明周期
+２）在c中，global会被放入bss中，未初始化，但是c++中所有的全局对象被当做“初始化过的数据”，会调用constructor函数　可以测试一下
+３）一般情况下，c++默认为类生成：default constructor,destructor,copy constructor,copy assignment operator
+#include<iostream>
+using namespace std;
+class Point {
+	public:
+			Point (){cout<<"in constructor "<<endl;}
+			~Point() {cout<<"in destructor"<<endl;}
+};
+Point glo;
+int main ()
+{
+		return 0;
+} 
+显然是会调用的
+
+１、抽象数据类型：
+　　根据需要决定是否写constructor destructor或者默认的就足够了
+　　　global类型的对象直到程序激活才调用构造函数
+　　　显性的初始化列表比将构造函数扩展为inline效率更高，后者需要　赋值等
+
+２、为继承做准备：
+继承可能用到多态，此时需要使用virtual ,那就会带来constructor等函数中加入对vptr的初始化（copy constructor等）
+３、继承体系下的对象构造：
+constructor函数中的隐藏代码，；
+１）　初始化列表
+２）　member的默认构造函数
+３）　vptr
+4)  base class constructor
+    可能this指针调整
+
+５）virtual base class constructor
+后面的介绍待补充
+
+虚拟继承：

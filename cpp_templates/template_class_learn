@@ -1,0 +1,309 @@
+模板类，类似于　类的容器。类的模子，通过模板可以定义一个模板，但是用于多种类中：
+类似于vector<int>  vector<string>
+实际上stl也是由模板去定义的　创建的：
+１）基本使用：
+一个例子：定义int数组和double数组类
+#ifndef INTARRAY_H
+#define INTARRAY_H
+ 
+#include <assert.h> // for assert()
+ 
+class IntArray
+{
+private:
+    int m_length;
+    int *m_data;
+ 
+public:
+    IntArray()
+    {
+        m_length = 0;
+        m_data = nullptr;
+    }
+ 
+    IntArray(int length)
+    {
+        assert(length > 0);
+        m_data = new int[length];
+        m_length = length;
+    }
+ 
+    ~IntArray()
+    {
+        delete[] m_data;
+    }
+ 
+    void Erase()
+    {
+        delete[] m_data;
+        // We need to make sure we set m_data to 0 here, otherwise it will
+        // be left pointing at deallocated memory!
+        m_data = nullptr;
+        m_length = 0;
+    }
+ 
+    int& operator[](int index)
+    {
+        assert(index >= 0 && index < m_length);
+        return m_data[index];
+    }
+ 
+    int getLength() { return m_length; }
+};
+ 
+#endif
+
+
+
+定义double:
+#ifndef DOUBLEARRAY_H
+#define DOUBLEARRAY_H
+ 
+#include <assert.h> // for assert()
+ 
+class DoubleArray
+{
+private:
+    int m_length;
+    double *m_data;
+ 
+public:
+    DoubleArray()
+    {
+        m_length = 0;
+        m_data = nullptr;
+    }
+ 
+    DoubleArray(int length)
+    {
+        assert(length > 0);
+        m_data = new double[length];
+        m_length = length;
+    }
+ 
+    ~DoubleArray()
+    {
+        delete[] m_data;
+    }
+ 
+    void Erase()
+    {
+        delete[] m_data;
+        // We need to make sure we set m_data to 0 here, otherwise it will
+        // be left pointing at deallocated memory!
+        m_data = nullptr;
+        m_length = 0;
+    }
+ 
+    double & operator[](int index)
+    {
+        assert(index >= 0 && index < m_length);
+        return m_data[index];
+    }
+ 
+    int getLength() { return m_length; }
+};
+ 
+#endif
+而利用模板，就可以这样做：
+头文件中：
+#ifndef ARRAY_H
+#define ARRAY_H
+ 
+#include <assert.h> // for assert()
+ 
+template <class T> // This is a template class, the user will provide the data type for T
+class Array
+{
+private:
+    int m_length;
+    T *m_data;
+ 
+public:
+    Array()
+    {
+        m_length = 0;
+        m_data = nullptr;
+    }
+ 
+    Array(int length)
+    {
+        m_data = new T[length];
+        m_length = length;
+    }
+ 
+    ~Array()
+    {
+        delete[] m_data;
+    }
+ 
+    void Erase()
+    {
+        delete[] m_data;
+        // We need to make sure we set m_data to 0 here, otherwise it will
+        // be left pointing at deallocated memory!
+        m_data = nullptr;
+        m_length = 0;
+    }
+ 
+ 
+    T& operator[](int index)
+    {
+        assert(index >= 0 && index < m_length);
+        return m_data[index];
+    }
+ 
+    // The length of the array is always an integer
+    // It does not depend on the data type of the array
+    int getLength(); // templated getLength() function defined below
+};
+ 
+template <typename T> // member functions defined outside the class need their own template declaration
+int Array<T>::getLength() { return m_length; } // note class name is Array<T>, not Array
+ 
+#endif
+
+//注意到某些函数定义在类之外，其实没有必要，
+注意到若是定义在外面，需要加上：
+template <typename T> // member functions defined outside the class need their own template declaration
+int Array<T>::
+如何使用：
+#include <iostream>
+#include "Array.h"
+ 
+int main()
+{
+	Array<int> intArray(12);
+	Array<double> doubleArray(12);
+ 
+	for (int count = 0; count < intArray.getLength(); ++count)
+	{
+		intArray[count] = count;
+		doubleArray[count] = count + 0.5;
+	}
+ 
+	for (int count = intArray.getLength()-1; count >= 0; --count)
+		std::cout << intArray[count] << "\t" << doubleArray[count] << '\n';
+ 
+	return 0;
+}
+模板类的实例化跟模板函数很像，也是在编译器扫描到对其的使用才会去拷贝一份并改变参数最后编译
+模板类是实现容器的方式
+
+２）模板的文件结构：
+如Array.cpp Array.h  main.cpp
+
+Array.h:
+#ifndef ARRAY_H
+#define ARRAY_H
+ 
+#include <assert.h> // for assert()
+ 
+template <class T>
+class Array
+{
+private:
+    int m_length;
+    T *m_data;
+ 
+public:
+    Array()
+    {
+        m_length = 0;
+        m_data = nullptr;
+    }
+ 
+    Array(int length)
+    {
+        m_data = new T[length];
+        m_length = length;
+    }
+ 
+    ~Array()
+    {
+        delete[] m_data;
+    }
+ 
+    void Erase()
+    {
+        delete[] m_data;
+        // We need to make sure we set m_data to 0 here, otherwise it will
+        // be left pointing at deallocated memory!
+        m_data = nullptr;
+        m_length = 0;
+    }
+ 
+ 
+    T& operator[](int index)
+    {
+        assert(index >= 0 && index < m_length);
+        return m_data[index];
+    }
+ 
+    // The length of the array is always an integer
+    // It does not depend on the data type of the array
+    int getLength();
+};
+ 
+#endif
+
+Array.cpp
+#include "Array.h"
+ 
+template <typename T>
+int Array<T>::getLength() { return m_length; }
+
+
+main.cpp
+#include "Array.h"
+ 
+int main()
+{
+	Array<int> intArray(12);
+	Array<double> doubleArray(12);
+ 
+	for (int count = 0; count < intArray.getLength(); ++count)
+	{
+		intArray[count] = count;
+		doubleArray[count] = count + 0.5;
+	}
+ 
+	for (int count = intArray.getLength()-1; count >= 0; --count)
+		std::cout << intArray[count] << "\t" << doubleArray[count] << '\n';
+ 
+	return 0;
+}
+这样会导致找不到函数getLength
+盗来一段解释：
+In order for the compiler to use a template, it must see both the template definition (not just a declaration)
+and the template type used to instantiate the template. Also remember that C++ compiles files individually. 
+When the Array.h header is #included in main, the template class definition is copied into main.cpp. 
+When the compiler sees that we need two template instances, Array<int>, and Array<double>, it will instantiate these,
+ and compile them as part of main.cpp. However, when it gets around to compiling Array.cpp separately, it will have 
+ forgotten that we need an Array<int> and Array<double>, so that template function is never instantiated. Thus, 
+ we get a linker error, because the compiler can’t find a definition for Array<int>::getLength() or Array<double>::getLength().
+ 如何解决：
+ The easiest way is to simply put all of your template class code in the header file (in this case, put the contents of Array.cpp into Array.h, below the class). In this way, when you #include the header, all of the template code will be in one place. The upside of this solution is that it is simple. The downside here is that if the template class is used in many places, you will end up with many local copies of the template class, which can increase your compile and link times (your linker should remove the duplicate definitions, so it shouldn’t bloat your executable). This is our preferred solution unless the compile or link times start to become a problem.
+
+If you feel that putting the Array.cpp code into the Array.h header makes the header too long/messy, an alternative is to rename Array.cpp to Array.inl (.inl stands for inline), and then include Array.inl from the bottom of the Array.h header. That yields the same result as putting all the code in the header, but helps keep things a little cleaner.
+
+Other solutions involve #including .cpp files, but we don’t recommend these because of the non-standard usage of #include.
+
+Another alternative is to use a three-file approach. The template class definition goes in the header. The template class member functions goes in the code file. Then you add a third file, which contains all of the instantiated classes you need:
+
+templates.cpp:
+	
+// Ensure the full Array template definition can be seen
+#include "Array.h"
+#include "Array.cpp" // we're breaking best practices here, but only in this one place
+ 
+// #include other .h and .cpp template definitions you need here
+ 
+template class Array<int>; // Explicitly instantiate template Array<int>
+template class Array<double>; // Explicitly instantiate template Array<double>
+ 
+// instantiate other templates here
+
+The “template class” command causes the compiler to explicitly instantiate the template class. In the above case, the compiler will stencil out both Array<int> and Array<double> inside of templates.cpp. Because templates.cpp is inside our project, this will then be compiled. These functions can then be linked to from elsewhere.
+
+This method is more efficient, but requires maintaining the templates.cpp file for each program.

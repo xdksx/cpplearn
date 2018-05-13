@@ -1,0 +1,232 @@
+模板使用是为简化同类型相似函数的定义。和相似类的定义。模板的使用主要也是在这两个方面：类和函数
+
+１、模板函数的初级使用：
+
+你可能会使用这样的定义：
+int max(int x, int y)
+{
+    return (x > y) ? x : y;
+}
+这时又想使用在double上：
+double max(double x, double y)
+{
+    return (x > y) ? x : y;
+}
+其他呢？此时有模板能简化：主要是替换类型：
+
+template type parameters
+在上面的int类型的函数，可以看到参数有两个int, 函数中也使用了这两个参数
+name your template types the letter T (short for “Type”).
+T max(T x, T y)
+{
+    return (x > y) ? x : y;
+}
+
+
+为了完成完整的工作，需要做一下几点：１、让编译器知道这是一个模板定义，２、T是一个占位符
+坐这两个事情，用一行：template<typename T>
+最后变为：　
+template<typename T>
+T max(T x,T y)
+{
+   return (x>y)?x:y;
+}
+   
+//这里也可以用class关键字，而不意味着他就是类类型
+多个参数：template <typename T1, typename T2>
+// template function here
+
+关于函数参数：有可能是类类型的所以，最好是传递const &的形式：
+template <typename T>
+const T& max(const T& x, const T& y)
+{
+    return (x > y) ? x : y;
+}
+
+使用：
+#include <iostream>
+ 
+template <typename T>
+const T& max(const T& x, const T& y)
+{
+    return (x > y) ? x : y;
+}
+ 
+int main()
+{
+    int i = max(3, 7); // returns 7
+    std::cout << i << '\n';
+ 
+    double d = max(6.34, 18.523); // returns 18.523
+    std::cout << d << '\n';
+ 
+    char ch = max('a', '6'); // returns 'a'
+    std::cout << ch << '\n';
+ 
+    return 0;
+}
+
+//基本优点：省时间，减少代码量，减少因为新类型手动拷贝带来的不安全
+//基本缺点： template functions can increase your compile time and code size, as a single template might be “realized” and recompiled in many files (there are ways to work around this one).
+
+
+2、模板函数的实例化：
+１）基本概念：c++并不会直接编译模板函数，而是在编译期间，当编译器检测到一个对模板函数的调用时，才会区拷贝模板函数并替换模板类型为真实的类型
+，进而调用这个函数，这个过程被称为模板函数的实例化
+
+如：有如下的模板函数
+template <typename T> // this is the template parameter declaration
+const T& max(const T& x, const T& y)
+{
+    return (x > y) ? x : y;
+}
+当它被调用时　：int i = max(3, 7); // calls max(int, int)　
+编译器检测到这个后，实例化为：
+const int& max(const int &x, const int &y)
+{
+    return (x > y) ? x : y;
+}
+
+后面再遇到double时，再实例化他的,最后再去编译
+２）使用：＋类
+模板函数支持的参数不仅仅是内建的类型，也可以是类类型，但是前提是这个类被定义了，模板函数实例化后也是像普通函数一样
+模板函数加上类：
+
+template <typename T> // this is the template parameter declaration
+const T& max(const T& x, const T& y)
+{
+    return (x > y) ? x : y;
+}
+ 
+class Cents
+{
+private:
+    int m_cents;
+public:
+    Cents(int cents)
+        : m_cents(cents)
+    {
+    }
+};
+ 
+int main()
+{
+    Cents nickle(5);
+    Cents dime(10);
+ 
+    Cents bigger = max(nickle, dime);
+ 
+    return 0;
+}
+
+上述例子类中未定义>操作函数，导致错误编译
+
+    friend bool operator>(const Cents &c1, const Cents &c2)
+    {
+        return (c1.m_cents > c2.m_cents);
+    }
+
+３）使用：基本类型：混合T和实际类型：
+#include <iostream>
+ 
+template <class T>
+T average(T *array, int length)
+{
+    T sum = 0;
+    for (int count=0; count < length; ++count)
+        sum += array[count];
+ 
+    sum /= length;
+    return sum;
+}
+ 
+int main()
+{
+    int array1[] = { 5, 3, 2, 1, 4 };
+    std::cout << average(array1, 5) << '\n';
+ 
+    double array2[] = { 3.12, 3.45, 9.23, 6.34 };
+    std::cout << average(array2, 4) << '\n';
+ 
+    return 0;
+}
+
+这种情况用于类中：会因为缺少定义各种操作函数而编译失败
+4)#include <iostream>
+ using namespace std;
+class Cents
+{
+private:
+    int m_cents;
+public:
+    Cents(int cents)
+        : m_cents(cents)
+    {
+    }
+ 
+    friend bool operator>(const Cents &c1, const Cents &c2)
+    {
+        return (c1.m_cents > c2.m_cents);
+    }
+};
+ 
+template <class T>
+T average(T *array, int length)
+{
+    T sum = 0;
+    for (int count=0; count < length; ++count)
+        sum += array[count];
+ 
+    sum /= length;
+    return sum;
+}
+ 
+int main()
+{
+    Cents array3[] = { Cents(5), Cents(10), Cents(15), Cents(14) };
+    std::cout << average(array3, 4) << '\n';
+ 
+    return 0;
+}
+可以看到其中涉及的对类的操作有Ｌ：+= /=,<<,拷贝构造函数（返回sum)
+最终：class Cents
+{
+private:
+    int m_cents;
+public:
+    Cents(int cents)
+        : m_cents(cents)
+    {
+    }
+ 
+    friend bool operator>(const Cents &c1, const Cents &c2)
+    {
+        return (c1.m_cents > c2.m_cents);
+    }
+ 
+    friend ostream& operator<< (ostream &out, const Cents &cents)
+    {
+        out << cents.m_cents << " cents ";
+        return out;
+    }
+ 
+    Cents& operator+=(Cents cents)
+    {
+        m_cents += cents.m_cents;
+        return *this;
+    }
+ 
+    Cents& operator/=(int value)
+    {
+        m_cents /= value;
+        return *this;
+    }
+};
+
+
+
+
+
+
+
+

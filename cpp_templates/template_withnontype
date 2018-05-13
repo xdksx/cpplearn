@@ -1,0 +1,287 @@
+1)之前见到的都是有类型的模板，模板函数或类也可以是无类型的：
+一个无类型的模板参数可能是以下几种：
+
+    A value that has an integral type or enumeration
+    A pointer or reference to a class object
+    A pointer or reference to a function
+    A pointer or reference to a class member function
+    std::nullptr_t
+如下例子：第二个：size就是non type
+#include <iostream>
+ 
+template <class T, int size> // size is the non-type parameter
+class StaticArray
+{
+private:
+    // The non-type parameter controls the size of the array
+    T m_array[size];
+ 
+public:
+    T* getArray();
+	
+    T& operator[](int index)
+    {
+        return m_array[index];
+    }
+};
+ 
+// Showing how a function for a class with an non-type parameter is defined outside of the class
+template <class T, int size>
+T* StaticArray<T, size>::getArray()
+{
+    return m_array;
+}
+ 
+int main()
+{
+    // declare an integer array with room for 12 integers
+    StaticArray<int, 12> intArray;
+ 
+    // Fill it up in order, then print it backwards
+    for (int count=0; count < 12; ++count)
+        intArray[count] = count;
+ 
+    for (int count=11; count >= 0; --count)
+        std::cout << intArray[count] << " ";
+    std::cout << '\n';
+ 
+    // declare a double buffer with room for 4 doubles
+    StaticArray<double, 4> doubleArray;
+ 
+    for (int count=0; count < 4; ++count)
+        doubleArray[count] = 4.4 + 0.1*count;
+ 
+    for (int count=0; count < 4; ++count)
+        std::cout << doubleArray[count] << ' ';
+ 
+    return 0;
+}
+
+
+
+
+2)函数模板特殊化：
+template <class T>
+class Storage
+{
+private:
+    T m_value;
+public:
+    Storage(T value)
+    {
+         m_value = value;
+    }
+ 
+    ~Storage()
+    {
+    }
+ 
+    void print()
+    {
+        std::cout << m_value << '\n';
+    }
+};
+int main()
+{
+    // Define some storage units
+    Storage<int> nValue(5);
+    Storage<double> dValue(6.7);
+ 
+    // Print out some values
+    nValue.print();
+    dValue.print();
+}
+
+关键函数：//当编译器要实例化Storage<double>:print时，它将看到已经明确定义这个函数，则使用这个函数而不会在做实例化
+template <>
+void Storage<double>::print()
+{
+    std::cout << std::scientific << m_value << '\n';
+}
+template<>告诉编译器，这时一个模板函数，但是没有模板参数，即特殊化所有的类型
+３）用于指针：上述例子
+int main()
+{
+    // Dynamically allocate a temporary string
+    char *string = new char[40];
+ 
+    // Ask user for their name
+    std::cout << "Enter your name: ";
+    std::cin >> string;
+ 
+    // Store the name
+    Storage<char*> storage(string);//指向同一个内存即只是拷贝了地址
+ 
+    // Delete the temporary string
+    delete[] string;　//指向的内存释放了
+ 
+    // Print out our value
+    storage.print(); // This will print garbage　打印了被释放的内容，空
+}
+如何拯救？
+重新分配空间
+template <>
+Storage<char*>::Storage(char* value)
+{
+    // Figure out how long the string in value is
+    int length=0;
+    while (value[length] != '\0')
+        ++length;
+    ++length; // +1 to account for null terminator
+ 
+    // Allocate memory to hold the value string
+    m_value = new char[length];
+ 
+    // Copy the actual value string into the m_value memory we just allocated
+    for (int count=0; count < length; ++count)
+        m_value[count] = value[count];
+}
+但是分配了空间没有释放：
+template <>
+Storage<char*>::~Storage()
+{
+    delete[] m_value;
+}
+
+
+４）用于函数中：
+template<typename T>
+T max(T x,T y)
+{
+   return (x>y)?x:y;
+}
+
+
+double max(double x, double y)
+{
+   std::cout<<"this is doubel:\n";
+    return (x > y) ? x : y;
+}
+
+－－－－－－－－或者:
+
+template<typename T>
+T max(T x,T y)
+{
+   return (x>y)?x:y;
+}
+
+template<>
+double max(double x, double y)
+{
+   std::cout<<"this is doubel:\n";
+    return (x > y) ? x : y;
+}
+main：
+  int i = max(3, 7); // returns 7
+    std::cout << i << '\n';
+ 
+    double d = max(6.34, 18.523); // returns 18.523
+    std::cout << d << '\n';
+ 
+    char ch = max('a', '6'); // returns 'a'
+    std::cout << ch << '\n';
+５）用于类中，特殊化整个类：
+template <class T>
+class Storage8
+{
+private:
+    T m_array[8];
+ 
+public:
+    void set(int index, const T &value)
+    {
+        m_array[index] = value;
+    }
+ 
+    const T& get(int index)
+    {
+        return m_array[index];
+    }
+};
+
+Because this class is templated, it will work fine for any given type:
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+	
+#include <iostream>
+ 
+int main()
+{
+    // Define a Storage8 for integers
+    Storage8<int> intStorage;
+ 
+    for (int count=0; count<8; ++count)
+        intStorage.set(count, count);
+ 
+    for (int count=0; count<8; ++count)
+        std::cout << intStorage.get(count) << '\n';
+ 
+    // Define a Storage8 for bool
+    Storage8<bool> boolStorage;
+    for (int count=0; count<8; ++count)
+        boolStorage.set(count, count & 3);
+ 
+    for (int count=0; count<8; ++count)
+        std::cout << (boolStorage.get(count) ? "true" : "false") << '\n';
+ 
+    return 0;
+}
+可以看到在这个例子中，bool类型时，也会用到一个字节，这样就浪费控件了，因为bool可以只用一个bit 来表示
+用类模板的特殊化可以解决:
+template <> // the following is a template class with no templated parameters
+class Storage8<bool> // we're specializing Storage8 for bool
+{
+// What follows is just standard class implementation details
+private:
+    unsigned char m_data;
+ 
+public:
+    Storage8() : m_data(0)
+    {
+    }
+ 
+    void set(int index, bool value)
+    {
+        // Figure out which bit we're setting/unsetting
+        // This will put a 1 in the bit we're interested in turning on/off
+        unsigned char mask = 1 << index;
+ 
+        if (value)  // If we're setting a bit
+            m_data |= mask;  // Use bitwise-or to turn that bit on
+        else  // if we're turning a bit off
+            m_data &= ~mask;  // bitwise-and the inverse mask to turn that bit off
+	}
+	
+    bool get(int index)
+    {
+        // Figure out which bit we're getting
+        unsigned char mask = 1 << index;
+        // bitwise-and to get the value of the bit we're interested in
+        // Then implicit cast to boolean
+        return (m_data & mask) != 0;
+    }
+};
+这样，当编译器实例化时，对bool类型就直接采用这个类定义的类

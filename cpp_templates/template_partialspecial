@@ -1,0 +1,395 @@
+１）基本使用：全局函数中：注意类可以这样，若是对函数的参数部分实例化，则不行，但是对
+
+
+【【【【
+
+template<typename T,typename T2>
+T max(T x,T2 y)
+{
+   return (x>y)?x:y;
+}
+
+template<typename T2>
+double max(double x, T2 y)
+{
+   std::cout<<"this is doubel:\n";
+    return (x > y) ? x : y;
+}
+
+则可以
+对template<typename T,int z)....则不行】】】】
+
+
+
+模板的部分实例化：
+#include <iostream>
+#include <cstring>
+ 
+template <class T, int size> // size is the expression parameter
+class StaticArray
+{
+private:
+	// The expression parameter controls the size of the array
+	T m_array[size];
+ 
+public:
+	T* getArray() { return m_array; }
+ 
+	T& operator[](int index)
+	{
+		return m_array[index];
+	}
+};
+ 
+template <typename T, int size>
+void print(StaticArray<T, size> &array)
+{
+	for (int count = 0; count < size; ++count)
+		std::cout << array[count] << ' ';
+}
+ 
+int main()
+{
+	// declare an int array
+	StaticArray<int, 4> int4;
+	int4[0] = 0;
+	int4[1] = 1;
+	int4[2] = 2;
+	int4[3] = 3;
+ 
+	// Print the array
+	print(int4);
+ 
+	return 0;
+}
+这个例子在int的时候表现良好，但是:
+int main()
+{
+    // declare an char array
+    StaticArray<char, 14> char14;
+ 
+    strcpy_s(char14.getArray(), 14, "Hello, world!");
+ 
+    // Print the array
+    print(char14);
+ 
+    return 0;
+}
+输出为h e l l o..带空格，所以不对：
+考虑重写：并完全特殊化:
+
+// Override print() for fully specialized StaticArray<char, 14>
+template <>
+void print(StaticArray<char, 14> &array)
+{
+	for (int count = 0; count < 14; ++count)
+		std::cout << array[count];
+}
+可是这样　，在char 34等其他数字时就会失效：
+考虑部分特殊化：
+// overload of print() function for partially specialized StaticArray<char, size>
+template <int size> // size is still a templated expression parameter
+void print(StaticArray<char, size> &array) // we're explicitly defining type char here
+{
+	for (int count = 0; count < size; ++count)
+		std::cout << array[count];
+}
+２）
+成员函数如何部分实例化：
+
+对成员函数不能像上述一样直接实例化:
+#include<iostream>
+ 
+template <class T, int size> // size is the expression parameter
+class StaticArray
+{
+private:
+	// The expression parameter controls the size of the array
+	T m_array[size];
+ 
+public:
+	T* getArray();
+ 
+	T& operator[](int index)
+	{
+		return m_array[index];
+	}
+	void print()
+	{
+		for (int i = 0; i < size; i++)
+			std::cout << m_array[i] << ' ';
+		std::cout << "\n";
+	}
+};
+ 
+template <int size> // size is the expression parameter
+class StaticArray<double, size>
+{
+private:
+	// The expression parameter controls the size of the array
+	double m_array[size];
+ 
+public:
+	double* getArray();
+ 
+	double& operator[](int index)
+	{
+		return m_array[index];
+	}
+	void print()
+	{
+		for (int i = 0; i < size; i++)
+			std::cout << std::scientific << m_array[i] << ' ';
+		std::cout << "\n";
+	}
+};
+ 
+int main()
+{
+	// declare an integer array with room for 6 integers
+	StaticArray<int, 6> intArray;
+ 
+	// Fill it up in order, then print it backwards
+	for (int count = 0; count < 6; ++count)
+		intArray[count] = count;
+	intArray.print();
+ 
+	// declare a double buffer with room for 4 doubles
+	StaticArray<double, 4> doubleArray;
+ 
+	for (int count = 0; count < 4; ++count)
+		doubleArray[count] = (4.0 + 0.1 * count);
+	doubleArray.print();
+ 
+	return 0;
+}
+
+
+但是这样未免麻烦：考虑模板继承：
+#include<iostream>
+template <class T, int size> // size is the expression parameter
+class StaticArray_Base
+{
+protected:
+	// The expression parameter controls the size of the array
+	T m_array[size];
+ 
+public:
+	T* getArray();
+ 
+	T& operator[](int index)
+	{
+		return m_array[index];
+	}
+	void print()
+	{
+		for (int i = 0; i < size; i++)
+			std::cout << m_array[i];
+		std::cout << "\n";
+	}
+};
+ 
+template <class T, int size> // size is the expression parameter
+class StaticArray: public StaticArray_Base<T, size>
+{
+public:
+	StaticArray()
+	{
+ 
+	}
+};
+ 
+template <int size> // size is the expression parameter
+class StaticArray<double, size>: public StaticArray_Base<double, size>
+{
+public:
+ 
+	void print()
+	{
+		for (int i = 0; i < size; i++)
+			std::cout << std::scientific << StaticArray_Base<double, size>::m_array[i] << " ";
+// note: gcc requires the StaticArray_Base<double, size>:: prefix in the above line.  Still not sure why.
+		std::cout << "\n";
+	}
+};
+ 
+int main()
+{
+	// declare an integer array with room for 12 integers
+	StaticArray<int, 6> intArray;
+ 
+	// Fill it up in order, then print it backwards
+	for (int count = 0; count < 6; ++count)
+		intArray[count] = count;
+	intArray.print();
+	// declare a double buffer with room for 4 doubles
+	StaticArray<double, 4> doubleArray;
+ 
+	for (int count = 0; count < 4; ++count)
+		doubleArray[count] = (4. + 0.1*count);
+	doubleArray.print();
+ 
+	return 0;
+}
+
+３）用于指针:
+考虑之前char *的例子：
+#include <iostream>
+ 
+// You need to include the Storage<T> class from the example above here
+ 
+template <typename T>
+class Storage<T*> // this is a partial-specialization of Storage that works with pointer types
+{
+private:
+    T* m_value;
+public:
+    Storage(T* value) // for pointer type T
+    {
+         // For pointers, we'll do a deep copy
+         m_value = new T(*value); // this copies a single value, not an array
+    }
+ 
+    ~Storage()
+    {
+        delete m_value; // so we use scalar delete here, not array delete
+    }
+ 
+    void print()
+    {
+        std::cout << *m_value << '\n';
+    }
+};
+
+int main()
+{
+	// Declare a non-pointer Storage to show it works
+	Storage<int> myint(5);
+	myint.print();
+ 
+	// Declare a pointer Storage to show it works
+	int x = 7;
+	Storage<int*> myintptr(&x);
+ 
+	// If myintptr did a pointer assignment on x,
+	// then changing x will change myintptr too
+	x = 9;
+	myintptr.print();
+ 
+    return 0;
+}
+可以用于int等，但是char *只会复制第一个字母，后面还是没有复制，择可以考虑“：
+#include <iostream>
+#include <cstring>
+ 
+// Our Storage class for non-pointers
+template <class T>
+class Storage
+{
+private:
+	T m_value;
+public:
+	Storage(T value)
+	{
+		m_value = value;
+	}
+ 
+	~Storage()
+	{
+	}
+ 
+	void print()
+	{
+		std::cout << m_value << '\n';
+	}
+};
+ 
+// Partial-specialization of Storage class for pointers
+template <class T>
+class Storage<T*>
+{
+private:
+	T* m_value;
+public:
+	Storage(T* value)
+	{
+		m_value = new T(*value);
+	}
+ 
+	~Storage()
+	{
+		delete m_value;
+	}
+ 
+	void print()
+	{
+		std::cout << *m_value << '\n';
+	}
+};
+ 
+// Full specialization of constructor for type char*
+template <>
+Storage<char*>::Storage(char* value)
+{
+	// Figure out how long the string in value is
+	int length = 0;
+	while (value[length] != '\0')
+		++length;
+	++length; // +1 to account for null terminator
+ 
+	// Allocate memory to hold the value string
+	m_value = new char[length];
+ 
+	// Copy the actual value string into the m_value memory we just allocated
+	for (int count = 0; count < length; ++count)
+		m_value[count] = value[count];
+}
+ 
+// Full specialization of destructor for type char*
+template<>
+Storage<char*>::~Storage()
+{
+	delete[] m_value;
+}
+ 
+// Full specialization of print function for type char*
+// Without this, printing a Storage<char*> would call Storage<T*>::print(), which only prints the first element
+template<>
+void Storage<char*>::print()
+{
+	std::cout << m_value;
+}
+ 
+int main()
+{
+	// Declare a non-pointer Storage to show it works
+	Storage<int> myint(5);
+	myint.print();
+ 
+	// Declare a pointer Storage to show it works
+	int x = 7;
+	Storage<int*> myintptr(&x);
+ 
+	// If myintptr did a pointer assignment on x,
+	// then changing x will change myintptr too
+	x = 9;
+	myintptr.print();
+ 
+	// Dynamically allocate a temporary string
+	char *name = new char[40]{ "Alex" }; // requires C++14
+ 
+	// If your compiler isn't C++14 compatible, comment out the above line and uncomment these
+//	char *name = new char[40];
+//	strcpy(name, "Alex");
+ 
+	// Store the name
+	Storage< char*> myname(name);
+ 
+	// Delete the temporary string
+	delete[] name;
+ 
+	// Print out our name
+	myname.print();
+}
+
+并不是个好办法Ｌ
